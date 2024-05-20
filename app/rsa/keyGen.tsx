@@ -2,16 +2,15 @@ import React, { useState, useEffect, useMemo } from "react";
 import { Input, Select, SelectItem } from "@nextui-org/react";
 import LaTeXRenderer from "../components/Latexrendered";
 import {
+  modularExponentation,
   modularInverse,
   extendedEuclideanAlgorithm,
-  modularExponentation,
 } from "./mathassets";
 
-// Assuming you have an array of prime numbers
-const primes = [61, 53, 47, 43, 37, 31, 29, 23, 19, 17];
-const latexPhi = "\\varphi = (n-1)(q-1)";
+const primes = [10501, 21269, 61, 53, 47, 43, 37, 31, 29, 23, 19, 17];
+const latexPhi = "\\varphi = (p-1)(q-1)";
 const latexD = "d = e^{-1} \\ (mod \\ \\varphi )";
-// Function to check if two numbers are coprime
+
 const gcd = (a: number, b: number): number => {
   while (b) {
     [a, b] = [b, a % b];
@@ -23,7 +22,6 @@ const isCoprime = (a: number, b: number): boolean => {
   return gcd(a, b) === 1;
 };
 
-// Function to generate potential 'e' values
 const generatePossibleEValues = (phi: number) => {
   const eValues = [];
   for (let i = 2; i < phi; i++) {
@@ -34,7 +32,22 @@ const generatePossibleEValues = (phi: number) => {
   return eValues;
 };
 
-const KeyGen = () => {
+const messageToInteger = (message: string): number => {
+  return Array.from(message).reduce((acc, char, index) => {
+    return acc + char.charCodeAt(0) * Math.pow(256, message.length - 1 - index);
+  }, 0);
+};
+
+const integerToMessage = (integer: number): string => {
+  let message = "";
+  while (integer > 0) {
+    message = String.fromCharCode(integer % 256) + message;
+    integer = Math.floor(integer / 256);
+  }
+  return message;
+};
+
+const KeyGen: React.FC = () => {
   const [valueP, setValueP] = useState<number | null>(null);
   const [valueQ, setValueQ] = useState<number | null>(null);
   const [valueE, setValueE] = useState<number | null>(null);
@@ -78,19 +91,10 @@ const KeyGen = () => {
     return false;
   }, [m]);
 
-  // Function to convert a message to an integer
-  const messageToInteger = (message: string): number => {
-    let result = 0;
-    for (let i = 0; i < message.length; i++) {
-      result = result * 256 + message.charCodeAt(i);
-    }
-    return result;
-  };
-
   const calculateCiphertext = () => {
     if (valueE !== null && n !== null) {
       const messageInteger = messageToInteger(m);
-      return Math.pow(messageInteger, valueE) % n;
+      return modularExponentation(messageInteger, valueE, n);
     }
     return null;
   };
@@ -100,7 +104,8 @@ const KeyGen = () => {
   const calculateDecryption = () => {
     if (ciphertext !== null && valueE !== null && phi !== null && n !== null) {
       const d = modularInverse(valueE, phi);
-      return modularExponentation(ciphertext, d, n);
+      const decryptedInteger = modularExponentation(ciphertext, d, n);
+      return integerToMessage(decryptedInteger);
     }
     return null;
   };
@@ -189,7 +194,7 @@ const KeyGen = () => {
           <p>
             An outside source encrypts a message using the public key <i>n</i>{" "}
             and <i>e</i> that is published. <br />
-            This can be a text based message that is converted into an integer
+            This can be a text-based message that is converted into an integer
             using the ASCII decimal system{" "}
             <LaTeXRenderer latex={"c=m^e \\ (mod n)"} />
           </p>
@@ -218,7 +223,7 @@ const KeyGen = () => {
             system: {messageToInteger(m)} <br />
             The message is then encrypted using the formula{" "}
             <LaTeXRenderer latex={"c=m^e\\pmod{n}"} /> <br />
-            So <i>c</i> becomes: {ciphertext}
+            So <i>c</i> becomes: {Number(ciphertext)}
           </p>
           <p className="mt-4">
             This is then sent to the recipient who can decrypt the message using
@@ -235,7 +240,6 @@ const KeyGen = () => {
             The recipient can then convert the integer back to the message using
             the ASCII decimal system.
           </p>
-          <p>m = {decryptedMessage}</p>
         </div>
       )}
     </div>
